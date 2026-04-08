@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block title %}Painel de Ponto Facial{% endblock %}
+
+{% block content %}
+  <section class="stats-grid" aria-label="Indicadores do sistema">
+    <article class="stat-card">
+      <h2>Funcionarios cadastrados</h2>
+      <p>{{ metrics.employees_count }}</p>
+    </article>
+    <article class="stat-card">
+      <h2>Batidas registradas</h2>
+      <p>{{ metrics.attendance_count }}</p>
+    </article>
+  </section>
+
+  <section class="panel" aria-labelledby="employees-title">
+    <div class="panel-header">
+      <h2 id="employees-title">Funcionarios</h2>
+      <p>Lista de pessoas com cadastro facial disponivel no sistema.</p>
+    </div>
+    {% if employees %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Codigo</th>
+              <th scope="col">Nome</th>
+              <th scope="col">Departamento</th>
+              <th scope="col">Cadastro</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for employee in employees %}
+              <tr>
+                <td>{{ employee.employee_code }}</td>
+                <td>{{ employee.full_name }}</td>
+                <td>{{ employee.department or 'Nao informado' }}</td>
+                <td>{{ employee.created_at | datetime_br }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="empty-state">Nenhum funcionario cadastrado ainda.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel" aria-labelledby="logs-title">
+    <div class="panel-header">
+      <h2 id="logs-title">Registros de horario</h2>
+      <p>Historico das ultimas batidas de ponto realizadas pela webcam.</p>
+    </div>
+    {% if logs %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Funcionario</th>
+              <th scope="col">Codigo</th>
+              <th scope="col">Data e hora</th>
+              <th scope="col">Confianca</th>
+              <th scope="col">Origem</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for log in logs %}
+              <tr>
+                <td>{{ log.full_name }}</td>
+                <td>{{ log.employee_code }}</td>
+                <td>{{ log.recognized_at | datetime_br }}</td>
+                <td>{{ '%.3f'|format(log.confidence) }}</td>
+                <td>{{ log.source }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="empty-state">Nenhuma batida de ponto registrada ainda.</p>
+    {% endif %}
+  </section>
+{% endblock %}

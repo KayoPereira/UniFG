@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Painel de Ponto Facial{% endblock %}</title>
+    <meta
+      name="description"
+      content="Painel local para consulta de funcionarios cadastrados e registros de ponto com reconhecimento facial."
+    >
+    <meta name="robots" content="index,follow">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="shell">
+        <p class="eyebrow">Sistema local</p>
+        <h1>Painel de ponto facial</h1>
+        <p class="lead">
+          Exibicao dos funcionarios cadastrados e do historico de registros de horario.
+        </p>
+      </div>
+    </header>
+    <main class="shell">
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>
