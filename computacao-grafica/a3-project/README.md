@@ -1,12 +1,12 @@
 # Sistema de ponto com reconhecimento facial
 
-Projeto em Python para cadastro e reconhecimento de rostos com OpenCV, registro de ponto em SQLite, mini-site de exibição em Flask e integração com ESP8266 usando MicroPython.
+Projeto em Python para cadastro e reconhecimento de rostos pelo navegador, registro de entrada e saida em Cloud Firestore, mini-site em Flask e integração com ESP8266 usando MicroPython.
 
 ## O que o sistema faz
 
-- cadastra novos funcionários com webcam
-- reconhece funcionários já cadastrados
-- grava cada batida de ponto com data e hora
+- cadastra novos funcionários pelo site Flask usando a camera do navegador
+- reconhece funcionários já cadastrados a partir do site Flask
+- grava cada registro com regra de entrada e saida
 - expõe funcionários e registros em um mini-site local
 - envia sinais para um ESP8266 quando o rosto é reconhecido, não reconhecido ou quando o sistema está em modo de cadastro
 
@@ -14,7 +14,7 @@ Projeto em Python para cadastro e reconhecimento de rostos com OpenCV, registro 
 
 - Aplicação principal: Python 3.11+
 - Reconhecimento facial: OpenCV com YuNet e SFace
-- Banco de dados: SQLite
+- Banco de dados: Cloud Firestore
 - Mini-site: Flask
 - ESP8266: MicroPython com servidor HTTP simples
 
@@ -32,36 +32,33 @@ Fluxo esperado:
 ## Instalação
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python -m scripts.download_models
-python -m app.cli init-db
+python3 -m scripts.download_models
 ```
 
-## Webcam no WSL
+Coloque o JSON da service account do Firebase em `.secrets/firebase-service-account.json`.
 
-No WSL2, webcams normalmente nao aparecem como `/dev/video0`, mesmo estando acessiveis no Windows. Para esse caso, o projeto inclui um launcher que executa apenas os comandos que dependem da webcam com o Python do Windows, mantendo o mesmo codigo e o mesmo banco do projeto.
-
-Exemplo de uso a partir do WSL:
+## Iniciando o servidor
 
 ```bash
-bash scripts/run_windows_cli.sh enroll --code FUNC001 --name "Maria Silva" --department "Financeiro"
-bash scripts/run_windows_cli.sh recognize
+source .venv/bin/activate
+
+export FIREBASE_PROJECT_ID="a3-project-bd5d6"
+export FIREBASE_CREDENTIALS_PATH=".secrets/firebase-service-account.json"
+
+# opcional: URL do ESP8266 na rede local
+export ESP8266_URL="http://IP_DO_ESP"
+
+python3 -m app.cli serve --host 0.0.0.0 --port 8000
 ```
 
-Na primeira execucao, o script cria um ambiente virtual no Windows e instala as dependencias automaticamente. Se o Windows ainda nao tiver Python instalado, instale com:
+Depois abra `http://localhost:8000` no navegador.
 
-```powershell
-winget install -e --id Python.Python.3.11 --scope user
-```
+## Captura no navegador
 
-Para rodar o mini-site e outros comandos no WSL lendo o mesmo banco usado pelo launcher do Windows, use:
-
-```bash
-bash scripts/run_wsl_cli.sh init-db
-bash scripts/run_wsl_cli.sh serve --host 0.0.0.0 --port 8000
-```
+A camera agora e acessada pelo proprio navegador. Isso elimina a dependencia de abrir a webcam por um executavel local para cadastro ou reconhecimento. Basta subir o Flask e abrir o site em um navegador com permissao de camera.
 
 ## Configuração por variáveis de ambiente
 
@@ -69,49 +66,34 @@ bash scripts/run_wsl_cli.sh serve --host 0.0.0.0 --port 8000
 export ESP8266_URL="http://192.168.0.50"
 export CAMERA_INDEX="0"
 export FACE_MATCH_THRESHOLD="0.363"
+export FIREBASE_PROJECT_ID="SEU-PROJETO"
+export FIREBASE_CREDENTIALS_PATH="/caminho/para/service-account.json"
 ```
 
 Variáveis disponíveis:
 
 - `DATA_DIR`: diretório base para dados e fotos
 - `ESP8266_URL`: URL base do ESP8266
-- `CAMERA_INDEX`: índice da webcam
 - `FACE_MATCH_THRESHOLD`: limiar mínimo da similaridade do SFace
-- `FACES_DIR`: diretório onde as fotos de referência serão salvas
-- `DATABASE_PATH`: caminho opcional do SQLite
+- `FIREBASE_PROJECT_ID`: identificador do projeto Firebase/Firestore
+- `FIREBASE_CREDENTIALS_PATH`: caminho para o JSON da conta de serviço do Firebase
+- `WEB_ENROLLMENT_SAMPLES`: quantidade mínima de capturas para cadastro
+- `WEB_SCAN_SAMPLES`: quantidade mínima de capturas para reconhecimento
 
-Se a sua webcam nao estiver no indice padrao `0`, descubra o indice com `python -m app.cli list-cameras` e depois exporte `CAMERA_INDEX` com o valor correto.
+O navegador e quem escolhe a camera. Em geral, no celular ou notebook, a camera frontal ja sera usada automaticamente.
 
 ## Uso
 
-Inicializar o banco:
+Validar a conexao com o Firebase:
 
 ```bash
-python -m app.cli init-db
-```
-
-Cadastrar um novo funcionário:
-
-```bash
-python -m app.cli enroll --code FUNC001 --name "Maria Silva" --department "Financeiro"
-```
-
-Reconhecer um rosto e registrar ponto:
-
-```bash
-python -m app.cli recognize
-```
-
-Listar cameras disponiveis no OpenCV:
-
-```bash
-python -m app.cli list-cameras
+python3 -m app.cli init-db
 ```
 
 Subir o mini-site:
 
 ```bash
-python -m app.cli serve --host 0.0.0.0 --port 8000
+python3 -m app.cli serve --host 0.0.0.0 --port 8000
 ```
 
 Depois abra `http://localhost:8000`.
@@ -125,24 +107,25 @@ O script [scripts/download_models.py](scripts/download_models.py) baixa ambos au
 
 ## Como o cadastro funciona
 
-1. o sistema envia o sinal `registering` para o ESP8266
-2. a webcam abre
-3. posicione apenas um rosto na tela
-4. pressione `C` sete vezes para coletar sete amostras faciais
-5. o sistema salva o embedding e uma foto de referência do funcionário
+1. o usuario abre a camera no site
+2. o sistema envia o sinal `registering` para o ESP8266
+3. o navegador captura as amostras faciais necessarias
+4. o Flask extrai o embedding e salva a credencial no Firebase
 
 ## Como o reconhecimento funciona
 
-1. a webcam abre
-2. o sistema tenta encontrar o rosto principal do quadro
-3. se a similaridade ultrapassar o limiar configurado, registra a batida de ponto
-4. se o rosto permanecer como desconhecido por alguns quadros, envia o sinal de desconhecido ao ESP8266
+1. o usuario escolhe se vai registrar entrada ou saida
+2. o navegador envia as capturas faciais ao Flask
+3. o sistema compara o embedding com as credenciais do Firebase
+4. se a pessoa ja estiver dentro, uma nova entrada e bloqueada
+5. se a pessoa nao tiver entrada em aberto, a saida e bloqueada
 
 ## Sinais enviados ao ESP8266
 
 - `recognized`: funcionário reconhecido
 - `unknown`: rosto não cadastrado
 - `registering`: modo de cadastro ativo
+- `denied`: tentativa de entrada ou saida invalida para o estado atual
 
 ## Deploy do ESP8266 com MicroPython
 

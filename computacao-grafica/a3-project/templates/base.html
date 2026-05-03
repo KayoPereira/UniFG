@@ -6,19 +6,16 @@
     <title>{% block title %}Painel de Ponto Facial{% endblock %}</title>
     <meta
       name="description"
-      content="Painel local para consulta de funcionarios cadastrados e registros de ponto com reconhecimento facial."
+      content="Painel web para cadastro facial, registro de entrada e saida e monitoramento de funcionarios com integracao Firebase e ESP8266."
     >
     <meta name="robots" content="index,follow">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='app.js') }}" defer></script>
   </head>
   <body>
     <header class="site-header">
       <div class="shell">
-        <p class="eyebrow">Sistema local</p>
         <h1>Painel de ponto facial</h1>
-        <p class="lead">
-          Exibicao dos funcionarios cadastrados e do historico de registros de horario.
-        </p>
       </div>
     </header>
     <main class="shell">

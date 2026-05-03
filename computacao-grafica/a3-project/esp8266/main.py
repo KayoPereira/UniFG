@@ -35,6 +35,10 @@ def handle_state(state: str) -> None:
         blink(3, 0.15, 0.15)
         return
 
+    if state == "denied":
+        blink(6, 0.08, 0.08)
+        return
+
     if state == "registering":
         blink(5, 0.4, 0.2)
         return

@@ -94,6 +94,78 @@ class FaceEngine:
         normalized /= np.linalg.norm(normalized)
         return normalized, aligned_face
 
+    def decode_image_bytes(self, image_bytes: bytes) -> np.ndarray:
+        frame_array = np.frombuffer(image_bytes, dtype=np.uint8)
+        frame = cv2.imdecode(frame_array, cv2.IMREAD_COLOR)
+        if frame is None:
+            raise ValueError("Nao foi possivel decodificar a imagem enviada pelo navegador.")
+        return frame
+
+    def extract_embedding_from_image_bytes(self, image_bytes: bytes) -> tuple[np.ndarray, np.ndarray]:
+        frame = self.decode_image_bytes(image_bytes)
+        face = self._detect_primary_face(frame)
+        if face is None:
+            raise ValueError("Nenhum rosto valido foi detectado na imagem enviada.")
+        return self._extract_features(frame, face)
+
+    def create_enrollment_from_images(self, images: list[bytes]) -> EnrollmentResult:
+        if not images:
+            raise ValueError("Envie pelo menos uma imagem para cadastrar a face.")
+
+        collected_embeddings: list[np.ndarray] = []
+        last_crop: np.ndarray | None = None
+
+        for image_bytes in images:
+            embedding, last_crop = self.extract_embedding_from_image_bytes(image_bytes)
+            collected_embeddings.append(embedding)
+
+        average_embedding = np.mean(collected_embeddings, axis=0)
+        average_embedding /= np.linalg.norm(average_embedding)
+
+        if last_crop is None:
+            raise RuntimeError("Nao foi possivel gerar uma foto de referencia para o cadastro.")
+
+        return EnrollmentResult(
+            embedding=average_embedding.astype(np.float32),
+            face_crop=last_crop,
+        )
+
+    def recognize_from_images(self, images: list[bytes], employees: list[dict]) -> RecognitionResult:
+        if not images:
+            raise ValueError("Envie pelo menos uma imagem para o reconhecimento facial.")
+
+        best_employee = None
+        best_score = -1.0
+
+        for image_bytes in images:
+            frame = self.decode_image_bytes(image_bytes)
+            face = self._detect_primary_face(frame)
+            if face is None:
+                continue
+
+            embedding, _ = self._extract_features(frame, face)
+
+            for employee in employees:
+                score = self._match_embeddings(embedding, employee["face_embedding"])
+                if score > best_score:
+                    best_score = score
+                    best_employee = employee
+
+        if best_employee and best_score >= self.settings.face_match_threshold:
+            return RecognitionResult(
+                status="recognized",
+                confidence=best_score,
+                employee=best_employee,
+                frame=None,
+            )
+
+        return RecognitionResult(
+            status="unknown",
+            confidence=max(best_score, 0.0),
+            employee=None,
+            frame=None,
+        )
+
     def _match_embeddings(self, probe_embedding: np.ndarray, reference_embedding: np.ndarray) -> float:
         probe = probe_embedding.reshape(1, -1)
         reference = reference_embedding.reshape(1, -1)

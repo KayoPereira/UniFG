@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import json
-import sqlite3
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
+import firebase_admin
 import numpy as np
+from firebase_admin import credentials, firestore
 
 from .config import settings
 
@@ -15,66 +14,83 @@ def utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def get_connection() -> sqlite3.Connection:
-    connection = sqlite3.connect(settings.database_path)
-    connection.row_factory = sqlite3.Row
-    connection.execute("PRAGMA foreign_keys = ON")
-    return connection
+def _get_firebase_app() -> firebase_admin.App:
+    try:
+        return firebase_admin.get_app()
+    except ValueError:
+        options: dict[str, str] = {}
+        if settings.firebase_project_id:
+            options["projectId"] = settings.firebase_project_id
+
+        if settings.firebase_credentials_path is not None:
+            if not settings.firebase_credentials_path.exists():
+                raise RuntimeError(
+                    "O arquivo configurado em FIREBASE_CREDENTIALS_PATH nao foi encontrado: "
+                    f"{settings.firebase_credentials_path}"
+                )
+
+            credential = credentials.Certificate(str(settings.firebase_credentials_path))
+            return firebase_admin.initialize_app(credential, options or None)
+
+        if not settings.firebase_project_id:
+            raise RuntimeError(
+                "Defina FIREBASE_PROJECT_ID e uma credencial de servico para usar o Firestore."
+            )
+
+        try:
+            return firebase_admin.initialize_app(options=options or None)
+        except Exception as exc:
+            raise RuntimeError(
+                "Nao foi possivel inicializar o Firebase. Defina FIREBASE_CREDENTIALS_PATH com o JSON da conta de servico."
+            ) from exc
 
 
-def init_database() -> None:
-    settings.database_path.parent.mkdir(parents=True, exist_ok=True)
+def _get_firestore_client() -> firestore.Client:
+    return firestore.client(app=_get_firebase_app())
 
-    with get_connection() as connection:
-        connection.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS employees (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                employee_code TEXT NOT NULL UNIQUE,
-                full_name TEXT NOT NULL,
-                department TEXT,
-                face_embedding TEXT NOT NULL,
-                photo_path TEXT,
-                created_at TEXT NOT NULL
-            );
 
-            CREATE TABLE IF NOT EXISTS attendance_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                employee_id INTEGER NOT NULL,
-                recognized_at TEXT NOT NULL,
-                confidence REAL NOT NULL,
-                source TEXT NOT NULL DEFAULT 'camera',
-                FOREIGN KEY (employee_id) REFERENCES employees(id)
-            );
+def _employees_collection():
+    return _get_firestore_client().collection("employees")
 
-            CREATE INDEX IF NOT EXISTS idx_attendance_logs_employee_id
-            ON attendance_logs(employee_id);
 
-            CREATE INDEX IF NOT EXISTS idx_attendance_logs_recognized_at
-            ON attendance_logs(recognized_at DESC);
-            """
+def _attendance_collection():
+    return _get_firestore_client().collection("attendance_logs")
+
+
+def _validate_employee_code(employee_code: str) -> None:
+    invalid_chars = ".#$[]/"
+    if any(char in employee_code for char in invalid_chars):
+        raise ValueError(
+            "O codigo do funcionario nao pode conter os caracteres . # $ [ ] /."
         )
 
 
-def row_to_dict(row: sqlite3.Row | None) -> dict[str, Any] | None:
-    return dict(row) if row is not None else None
+def init_database() -> None:
+    _get_firebase_app()
 
 
-def serialize_embedding(embedding: np.ndarray) -> str:
-    return json.dumps(embedding.astype(float).tolist())
+def serialize_embedding(embedding: np.ndarray) -> list[float]:
+    return embedding.astype(float).tolist()
 
 
-def deserialize_embedding(raw_value: str) -> np.ndarray:
-    return np.array(json.loads(raw_value), dtype=np.float32)
+def deserialize_embedding(raw_value: list[float] | str) -> np.ndarray:
+    if isinstance(raw_value, str):
+        raw_sequence = [float(value) for value in raw_value.strip("[]").split(",") if value]
+    else:
+        raw_sequence = raw_value
+    return np.array(raw_sequence, dtype=np.float32)
+
+
+def get_employee(employee_code: str) -> dict[str, Any] | None:
+    _validate_employee_code(employee_code)
+    snapshot = _employees_collection().document(employee_code).get()
+    if not snapshot.exists:
+        return None
+    return snapshot.to_dict()
 
 
 def employee_exists(employee_code: str) -> bool:
-    with get_connection() as connection:
-        row = connection.execute(
-            "SELECT 1 FROM employees WHERE employee_code = ?",
-            (employee_code,),
-        ).fetchone()
-    return row is not None
+    return get_employee(employee_code) is not None
 
 
 def create_employee(
@@ -82,43 +98,30 @@ def create_employee(
     full_name: str,
     department: str | None,
     face_embedding: np.ndarray,
-    photo_path: Path | None,
+    face_image_base64: str | None,
 ) -> dict[str, Any]:
-    with get_connection() as connection:
-        cursor = connection.execute(
-            """
-            INSERT INTO employees (
-                employee_code,
-                full_name,
-                department,
-                face_embedding,
-                photo_path,
-                created_at
-            ) VALUES (?, ?, ?, ?, ?, ?)
-            """,
-            (
-                employee_code,
-                full_name,
-                department,
-                serialize_embedding(face_embedding),
-                str(photo_path) if photo_path else None,
-                utc_now_iso(),
-            ),
-        )
-        employee_id = cursor.lastrowid
-        row = connection.execute(
-            "SELECT * FROM employees WHERE id = ?",
-            (employee_id,),
-        ).fetchone()
-    return row_to_dict(row) or {}
+    _validate_employee_code(employee_code)
+    employee = {
+        "id": employee_code,
+        "employee_code": employee_code,
+        "full_name": full_name,
+        "department": department,
+        "face_embedding": serialize_embedding(face_embedding),
+        "face_image_base64": face_image_base64,
+        "presence_state": "outside",
+        "last_event_type": None,
+        "last_recognized_at": None,
+        "created_at": utc_now_iso(),
+    }
+    _employees_collection().document(employee_code).set(employee)
+    return employee
 
 
 def list_employees() -> list[dict[str, Any]]:
-    with get_connection() as connection:
-        rows = connection.execute(
-            "SELECT * FROM employees ORDER BY created_at DESC"
-        ).fetchall()
-    return [dict(row) for row in rows]
+    snapshots = _employees_collection().stream()
+    ordered = [snapshot.to_dict() for snapshot in snapshots]
+    ordered.sort(key=lambda employee: employee.get("created_at", ""), reverse=True)
+    return ordered
 
 
 def list_employee_embeddings() -> list[dict[str, Any]]:
@@ -129,53 +132,64 @@ def list_employee_embeddings() -> list[dict[str, Any]]:
 
 
 def create_attendance_log(
-    employee_id: int,
+    employee: dict[str, Any],
     confidence: float,
-    source: str = "camera",
+    event_type: str,
+    source: str = "web",
 ) -> dict[str, Any]:
-    with get_connection() as connection:
-        cursor = connection.execute(
-            """
-            INSERT INTO attendance_logs (
-                employee_id,
-                recognized_at,
-                confidence,
-                source
-            ) VALUES (?, ?, ?, ?)
-            """,
-            (employee_id, utc_now_iso(), confidence, source),
-        )
-        row = connection.execute(
-            "SELECT * FROM attendance_logs WHERE id = ?",
-            (cursor.lastrowid,),
-        ).fetchone()
-    return row_to_dict(row) or {}
+    employee_code = str(employee["employee_code"])
+    current_state = employee.get("presence_state") or "outside"
+
+    if event_type == "entry" and current_state == "inside":
+        raise ValueError("Entrada bloqueada: este funcionario ainda nao registrou a saida.")
+
+    if event_type == "exit" and current_state != "inside":
+        raise ValueError("Saida bloqueada: este funcionario ainda nao possui uma entrada em aberto.")
+
+    timestamp = utc_now_iso()
+    log_reference = _attendance_collection().document()
+    attendance_log = {
+        "id": log_reference.id,
+        "employee_code": employee_code,
+        "full_name": employee["full_name"],
+        "recognized_at": timestamp,
+        "confidence": confidence,
+        "source": source,
+        "event_type": event_type,
+    }
+    log_reference.set(attendance_log)
+
+    next_state = "inside" if event_type == "entry" else "outside"
+    _employees_collection().document(employee_code).update(
+        {
+            "presence_state": next_state,
+            "last_event_type": event_type,
+            "last_recognized_at": timestamp,
+        }
+    )
+    employee.update(
+        {
+            "presence_state": next_state,
+            "last_event_type": event_type,
+            "last_recognized_at": timestamp,
+        }
+    )
+    return attendance_log
 
 
 def list_attendance_logs(limit: int = 100) -> list[dict[str, Any]]:
-    with get_connection() as connection:
-        rows = connection.execute(
-            """
-            SELECT attendance_logs.*, employees.employee_code, employees.full_name
-            FROM attendance_logs
-            INNER JOIN employees ON employees.id = attendance_logs.employee_id
-            ORDER BY attendance_logs.recognized_at DESC
-            LIMIT ?
-            """,
-            (limit,),
-        ).fetchall()
-    return [dict(row) for row in rows]
+    query = _attendance_collection().order_by(
+        "recognized_at",
+        direction=firestore.Query.DESCENDING,
+    ).limit(limit)
+    return [snapshot.to_dict() for snapshot in query.stream()]
 
 
 def get_dashboard_metrics() -> dict[str, int]:
-    with get_connection() as connection:
-        employees_count = connection.execute(
-            "SELECT COUNT(*) FROM employees"
-        ).fetchone()[0]
-        attendance_count = connection.execute(
-            "SELECT COUNT(*) FROM attendance_logs"
-        ).fetchone()[0]
+    employees = list_employees()
+    attendance_logs = list_attendance_logs(limit=10_000)
     return {
-        "employees_count": employees_count,
-        "attendance_count": attendance_count,
+        "employees_count": len(employees),
+        "attendance_count": len(attendance_logs),
+        "present_count": sum(1 for employee in employees if employee.get("presence_state") == "inside"),
     }
