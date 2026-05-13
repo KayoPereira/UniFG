@@ -1,12 +1,12 @@
 {% extends 'base.html' %}
 
-{% block title %}Painel de Ponto Facial{% endblock %}
+{% block title %}Painel de Controle de Portão - Condomínio{% endblock %}
 
 {% block content %}
   <section class="stats-grid" aria-label="Indicadores do sistema">
     <article class="stat-card">
-      <h2>Funcionarios cadastrados</h2>
-      <p>{{ metrics.employees_count }}</p>
+  <h2>Moradores/Visitantes cadastrados</h2>
+  <p>{{ metrics.residents_count }}</p>
     </article>
     <article class="stat-card">
       <h2>Batidas registradas</h2>
@@ -23,23 +23,23 @@
       <div class="panel-header">
         <div>
           <h2>Cadastrar nova face</h2>
-          <p>Preencha os dados do funcionario e capture {{ settings.web_enrollment_samples }} fotos pelo navegador.</p>
+          <p>Preencha os dados do morador ou visitante e capture {{ settings.web_enrollment_samples }} fotos pelo navegador.</p>
         </div>
       </div>
 
-      <form action="/api/employees" method="post" novalidate>
+  <form action="/api/residents" method="post" novalidate>
         <div class="form-grid">
           <label>
             <span>Codigo</span>
-            <input name="employee_code" type="text" required maxlength="40" autocomplete="off">
+            <input name="resident_code" type="text" required maxlength="40" autocomplete="off">
           </label>
           <label>
             <span>Nome completo</span>
             <input name="full_name" type="text" required maxlength="120" autocomplete="name">
           </label>
           <label class="form-grid-full">
-            <span>Departamento</span>
-            <input name="department" type="text" maxlength="120" autocomplete="organization-title">
+            <span>Unidade</span>
+            <input name="unit" type="text" maxlength="120" autocomplete="off">
           </label>
         </div>
 
@@ -54,7 +54,7 @@
           <button type="button" class="button-secondary" data-start-camera>Abrir camera</button>
           <button type="button" class="button-secondary" data-capture>Capturar amostra</button>
           <button type="button" class="button-secondary" data-clear-captures>Limpar</button>
-          <button type="submit" class="button-primary">Cadastrar funcionario</button>
+          <button type="submit" class="button-primary">Cadastrar morador/visitante</button>
         </div>
 
         <div class="preview-strip" data-gallery aria-live="polite"></div>
@@ -65,8 +65,8 @@
     <article class="panel capture-panel" data-capture-form data-min-captures="{{ settings.web_scan_samples }}">
       <div class="panel-header">
         <div>
-          <h2>Registrar entrada ou saida</h2>
-          <p>Capture {{ settings.web_scan_samples }} fotos para validar a identidade e o estado atual do funcionario.</p>
+          <h2>Registrar entrada ou saída</h2>
+          <p>Capture {{ settings.web_scan_samples }} fotos para validar a identidade e o estado atual do morador/visitante.</p>
         </div>
       </div>
 
@@ -84,7 +84,7 @@
         <div class="camera-stage">
           <video data-video playsinline autoplay muted></video>
           <div class="camera-copy">
-            <p>Se a pessoa ja estiver com entrada em aberto, uma nova entrada sera bloqueada ate que a saida seja registrada.</p>
+            <p>Se a pessoa já estiver com entrada em aberto, uma nova entrada será bloqueada até que a saída seja registrada.</p>
           </div>
         </div>
 
@@ -92,7 +92,7 @@
           <button type="button" class="button-secondary" data-start-camera>Abrir camera</button>
           <button type="button" class="button-secondary" data-capture>Capturar rosto</button>
           <button type="button" class="button-secondary" data-clear-captures>Limpar</button>
-          <button type="submit" class="button-primary">Registrar ponto</button>
+          <button type="submit" class="button-primary">Registrar acesso</button>
         </div>
 
         <div class="preview-strip" data-gallery aria-live="polite"></div>
@@ -101,58 +101,58 @@
     </article>
   </section>
 
-  <section class="panel" aria-labelledby="employees-title">
+  <section class="panel" aria-labelledby="residents-title">
     <div class="panel-header">
-      <h2 id="employees-title">Funcionarios</h2>
-      <p>Base facial centralizada no Firebase com o estado atual de cada funcionario.</p>
+      <h2 id="residents-title">Moradores/Visitantes</h2>
+      <p>Base facial centralizada no Firebase com o estado atual de cada morador/visitante.</p>
     </div>
-    {% if employees %}
+  {% if residents %}
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th scope="col">Codigo</th>
+              <th scope="col">Código</th>
               <th scope="col">Nome</th>
-              <th scope="col">Departamento</th>
+              <th scope="col">Unidade</th>
               <th scope="col">Estado</th>
               <th scope="col">Cadastro</th>
             </tr>
           </thead>
           <tbody>
-            {% for employee in employees %}
+            {% for resident in residents %}
               <tr>
-                <td>{{ employee.employee_code }}</td>
-                <td>{{ employee.full_name }}</td>
-                <td>{{ employee.department or 'Nao informado' }}</td>
+                <td>{{ resident.resident_code }}</td>
+                <td>{{ resident.full_name }}</td>
+                <td>{{ resident.unit or 'Não informado' }}</td>
                 <td>
-                  {% if employee.presence_state == 'inside' %}
+                  {% if resident.presence_state == 'inside' %}
                     <span class="badge badge-success">Dentro</span>
                   {% else %}
                     <span class="badge">Fora</span>
                   {% endif %}
                 </td>
-                <td>{{ employee.created_at | datetime_br }}</td>
+                <td>{{ resident.created_at | datetime_br }}</td>
               </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
     {% else %}
-      <p class="empty-state">Nenhum funcionario cadastrado ainda.</p>
+  <p class="empty-state">Nenhum morador/visitante cadastrado ainda.</p>
     {% endif %}
   </section>
 
   <section class="panel" aria-labelledby="logs-title">
     <div class="panel-header">
-      <h2 id="logs-title">Registros de horario</h2>
-      <p>Historico das ultimas entradas e saidas processadas pelo navegador.</p>
+  <h2 id="logs-title">Registros de acesso</h2>
+  <p>Histórico das últimas entradas e saídas processadas pelo sistema.</p>
     </div>
     {% if logs %}
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th scope="col">Funcionario</th>
+              <th scope="col">Morador/Visitante</th>
               <th scope="col">Codigo</th>
               <th scope="col">Evento</th>
               <th scope="col">Data e hora</th>
@@ -175,7 +175,7 @@
         </table>
       </div>
     {% else %}
-      <p class="empty-state">Nenhuma batida de ponto registrada ainda.</p>
+  <p class="empty-state">Nenhum acesso registrado ainda.</p>
     {% endif %}
   </section>
 {% endblock %}

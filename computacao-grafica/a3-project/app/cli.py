@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Sistema de ponto com reconhecimento facial via navegador e integracao com ESP8266.",
+        description="Sistema de controle de portão de condomínio com reconhecimento facial via navegador e integração com ESP8266.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 

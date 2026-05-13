@@ -49,19 +49,20 @@ def _get_firestore_client() -> firestore.Client:
     return firestore.client(app=_get_firebase_app())
 
 
-def _employees_collection():
-    return _get_firestore_client().collection("employees")
+def _residents_collection():
+    return _get_firestore_client().collection("residents")
+
+def _access_collection():
+    return _get_firestore_client().collection("access_logs")
 
 
-def _attendance_collection():
-    return _get_firestore_client().collection("attendance_logs")
 
 
-def _validate_employee_code(employee_code: str) -> None:
+def _validate_resident_code(resident_code: str) -> None:
     invalid_chars = ".#$[]/"
-    if any(char in employee_code for char in invalid_chars):
+    if any(char in resident_code for char in invalid_chars):
         raise ValueError(
-            "O codigo do funcionario nao pode conter os caracteres . # $ [ ] /."
+            "O código do morador/visitante não pode conter os caracteres . # $ [ ] /."
         )
 
 
@@ -81,31 +82,37 @@ def deserialize_embedding(raw_value: list[float] | str) -> np.ndarray:
     return np.array(raw_sequence, dtype=np.float32)
 
 
-def get_employee(employee_code: str) -> dict[str, Any] | None:
-    _validate_employee_code(employee_code)
-    snapshot = _employees_collection().document(employee_code).get()
+
+
+def get_resident(resident_code: str) -> dict[str, Any] | None:
+    _validate_resident_code(resident_code)
+    snapshot = _residents_collection().document(resident_code).get()
     if not snapshot.exists:
         return None
     return snapshot.to_dict()
 
 
-def employee_exists(employee_code: str) -> bool:
-    return get_employee(employee_code) is not None
 
 
-def create_employee(
-    employee_code: str,
+def resident_exists(resident_code: str) -> bool:
+    return get_resident(resident_code) is not None
+
+
+
+
+def create_resident(
+    resident_code: str,
     full_name: str,
-    department: str | None,
+    unit: str | None,
     face_embedding: np.ndarray,
     face_image_base64: str | None,
 ) -> dict[str, Any]:
-    _validate_employee_code(employee_code)
-    employee = {
-        "id": employee_code,
-        "employee_code": employee_code,
+    _validate_resident_code(resident_code)
+    resident = {
+        "id": resident_code,
+        "resident_code": resident_code,
         "full_name": full_name,
-        "department": department,
+        "unit": unit,
         "face_embedding": serialize_embedding(face_embedding),
         "face_image_base64": face_image_base64,
         "presence_state": "outside",
@@ -113,15 +120,14 @@ def create_employee(
         "last_recognized_at": None,
         "created_at": utc_now_iso(),
     }
-    _employees_collection().document(employee_code).set(employee)
-    return employee
+    _residents_collection().document(resident_code).set(resident)
+    return resident
 
 
-def list_employees() -> list[dict[str, Any]]:
-    snapshots = _employees_collection().stream()
-    ordered = [snapshot.to_dict() for snapshot in snapshots]
-    ordered.sort(key=lambda employee: employee.get("created_at", ""), reverse=True)
-    return ordered
+
+
+def list_residents() -> list[dict[str, Any]]:
+    return [doc.to_dict() for doc in _residents_collection().stream()]
 
 
 def list_employee_embeddings() -> list[dict[str, Any]]:
@@ -141,10 +147,10 @@ def create_attendance_log(
     current_state = employee.get("presence_state") or "outside"
 
     if event_type == "entry" and current_state == "inside":
-        raise ValueError("Entrada bloqueada: este funcionario ainda nao registrou a saida.")
+        raise ValueError("Entrada bloqueada: este morador/visitante ainda não registrou a saída.")
 
     if event_type == "exit" and current_state != "inside":
-        raise ValueError("Saida bloqueada: este funcionario ainda nao possui uma entrada em aberto.")
+        raise ValueError("Saída bloqueada: este morador/visitante ainda não possui uma entrada em aberto.")
 
     timestamp = utc_now_iso()
     log_reference = _attendance_collection().document()
@@ -185,11 +191,11 @@ def list_attendance_logs(limit: int = 100) -> list[dict[str, Any]]:
     return [snapshot.to_dict() for snapshot in query.stream()]
 
 
-def get_dashboard_metrics() -> dict[str, int]:
-    employees = list_employees()
-    attendance_logs = list_attendance_logs(limit=10_000)
+def get_dashboard_metrics() -> dict[str, Any]:
+    residents = list_residents()
+    logs = _access_collection().stream() if hasattr(_access_collection(), 'stream') else []
     return {
-        "employees_count": len(employees),
-        "attendance_count": len(attendance_logs),
-        "present_count": sum(1 for employee in employees if employee.get("presence_state") == "inside"),
+        "residents_count": len(residents),
+        "attendance_count": sum(1 for _ in logs),
+        "present_count": sum(1 for r in residents if r.get("presence_state") == "inside"),
     }

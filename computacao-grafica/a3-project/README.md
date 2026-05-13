@@ -1,14 +1,15 @@
-# Sistema de ponto com reconhecimento facial
 
-Projeto em Python para cadastro e reconhecimento de rostos pelo navegador, registro de entrada e saida em Cloud Firestore, mini-site em Flask e integração com ESP8266 usando MicroPython.
+# Controle de Entrada e Saída de Portões de Condomínio
+
+Projeto em Python para cadastro e reconhecimento de rostos pelo navegador, registro de entrada e saída de moradores e visitantes em Cloud Firestore, mini-site em Flask e integração com ESP8266 usando MicroPython para controle de portões de condomínio.
 
 ## O que o sistema faz
 
-- cadastra novos funcionários pelo site Flask usando a camera do navegador
-- reconhece funcionários já cadastrados a partir do site Flask
-- grava cada registro com regra de entrada e saida
-- expõe funcionários e registros em um mini-site local
-- envia sinais para um ESP8266 quando o rosto é reconhecido, não reconhecido ou quando o sistema está em modo de cadastro
+- Cadastra novos moradores ou visitantes pelo site Flask usando a câmera do navegador
+- Reconhece moradores ou visitantes já cadastrados a partir do site Flask
+- Grava cada registro de entrada e saída de pessoas pelo portão
+- Expõe moradores, visitantes e registros em um mini-site local
+- Envia sinais para um ESP8266 para liberar ou bloquear o portão quando o rosto é reconhecido, não reconhecido ou quando o sistema está em modo de cadastro
 
 ## Arquitetura
 
@@ -16,7 +17,7 @@ Projeto em Python para cadastro e reconhecimento de rostos pelo navegador, regis
 - Reconhecimento facial: OpenCV com YuNet e SFace
 - Banco de dados: Cloud Firestore
 - Mini-site: Flask
-- ESP8266: MicroPython com servidor HTTP simples
+- ESP8266: MicroPython com servidor HTTP simples para controle de portão
 
 ## Limitação importante sobre o ESP8266
 
@@ -24,10 +25,10 @@ O ESP8266 não executa Python tradicional de desktop. Para manter tudo em Python
 
 Fluxo esperado:
 
-1. gravar o firmware do MicroPython no ESP8266 pela USB
-2. enviar os arquivos [esp8266/boot.py](esp8266/boot.py) e [esp8266/main.py](esp8266/main.py) para a placa
-3. deixar o ESP conectado ao Wi-Fi da mesma rede do computador
-4. configurar a URL do ESP na aplicação principal
+1. Gravar o firmware do MicroPython no ESP8266 pela USB
+2. Enviar os arquivos [esp8266/boot.py](esp8266/boot.py) e [esp8266/main.py](esp8266/main.py) para a placa
+3. Deixar o ESP conectado ao Wi-Fi da mesma rede do computador
+4. Configurar a URL do ESP na aplicação principal para acionar o portão
 
 ## Instalação
 

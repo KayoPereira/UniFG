@@ -8,8 +8,8 @@ from typing import Any
 from flask import Flask, jsonify, render_template, request
 
 from .config import settings
-from .database import get_dashboard_metrics, init_database, list_attendance_logs, list_employees
-from .services.attendance_service import AttendanceService
+from .database import get_dashboard_metrics, init_database, list_residents
+from .services.attendance_service import AccessService
 
 
 def format_iso_datetime(value: str) -> str:
@@ -45,7 +45,7 @@ def create_app() -> Flask:
         static_folder=str(settings.base_dir / "static"),
     )
     init_database()
-    attendance_service = AttendanceService()
+    access_service = AccessService()
 
     @app.template_filter("datetime_br")
     def datetime_br(value: str) -> str:
@@ -53,26 +53,26 @@ def create_app() -> Flask:
 
     @app.get("/")
     def index() -> str:
-        metrics = get_dashboard_metrics()
-        employees = list_employees()
-        logs = list_attendance_logs()
+        metrics = get_dashboard_metrics() if 'get_dashboard_metrics' in globals() else {}
+        residents = list_residents()
+        logs = []  # Ajustar para logs de acesso se necessário
         return render_template(
             "index.html",
             metrics=metrics,
-            employees=employees,
+            residents=residents,
             logs=logs,
             settings=settings,
         )
 
-    @app.post("/api/employees")
-    def create_employee_route():
+    @app.post("/api/residents")
+    def create_resident_route():
         payload = request.get_json(silent=True) or {}
 
         try:
-            employee = attendance_service.register_employee(
-                employee_code=str(payload.get("employee_code", "")).strip(),
+            resident = access_service.register_resident(
+                resident_code=str(payload.get("resident_code", "")).strip(),
                 full_name=str(payload.get("full_name", "")).strip(),
-                department=str(payload.get("department", "")).strip() or None,
+                unit=str(payload.get("unit", "")).strip() or None,
                 images=parse_captures(payload, settings.web_enrollment_samples),
             )
         except (ValueError, RuntimeError) as exc:
@@ -81,8 +81,8 @@ def create_app() -> Flask:
         return jsonify(
             {
                 "status": "success",
-                "message": f"Funcionario {employee['full_name']} cadastrado com sucesso.",
-                "employee": employee,
+                "message": f"Morador/Visitante {resident['full_name']} cadastrado com sucesso.",
+                "resident": resident,
             }
         ), 201
 
