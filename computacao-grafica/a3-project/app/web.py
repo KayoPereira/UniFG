@@ -8,7 +8,7 @@ from typing import Any
 from flask import Flask, jsonify, render_template, request
 
 from .config import settings
-from .database import get_dashboard_metrics, init_database, list_residents
+from .database import get_dashboard_metrics, init_database, list_access_logs, list_residents
 from .services.attendance_service import AccessService
 
 
@@ -53,9 +53,9 @@ def create_app() -> Flask:
 
     @app.get("/")
     def index() -> str:
-        metrics = get_dashboard_metrics() if 'get_dashboard_metrics' in globals() else {}
+        metrics = get_dashboard_metrics()
         residents = list_residents()
-        logs = []  # Ajustar para logs de acesso se necessário
+        logs = list_access_logs()
         return render_template(
             "index.html",
             metrics=metrics,
@@ -95,7 +95,7 @@ def create_app() -> Flask:
             return jsonify({"status": "error", "message": "Modo invalido. Use entry ou exit."}), 400
 
         try:
-            outcome = attendance_service.recognize_and_log(
+            outcome = access_service.recognize_and_log(
                 images=parse_captures(payload, settings.web_scan_samples),
                 event_type=requested_mode,
                 source="web",

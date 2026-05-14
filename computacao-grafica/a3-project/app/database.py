@@ -130,21 +130,21 @@ def list_residents() -> list[dict[str, Any]]:
     return [doc.to_dict() for doc in _residents_collection().stream()]
 
 
-def list_employee_embeddings() -> list[dict[str, Any]]:
-    employees = list_employees()
-    for employee in employees:
-        employee["face_embedding"] = deserialize_embedding(employee["face_embedding"])
-    return employees
+def list_resident_embeddings() -> list[dict[str, Any]]:
+    residents = list_residents()
+    for resident in residents:
+        resident["face_embedding"] = deserialize_embedding(resident["face_embedding"])
+    return residents
 
 
-def create_attendance_log(
-    employee: dict[str, Any],
+def create_access_log(
+    resident: dict[str, Any],
     confidence: float,
     event_type: str,
     source: str = "web",
 ) -> dict[str, Any]:
-    employee_code = str(employee["employee_code"])
-    current_state = employee.get("presence_state") or "outside"
+    resident_code = str(resident["resident_code"])
+    current_state = resident.get("presence_state") or "outside"
 
     if event_type == "entry" and current_state == "inside":
         raise ValueError("Entrada bloqueada: este morador/visitante ainda não registrou a saída.")
@@ -153,38 +153,38 @@ def create_attendance_log(
         raise ValueError("Saída bloqueada: este morador/visitante ainda não possui uma entrada em aberto.")
 
     timestamp = utc_now_iso()
-    log_reference = _attendance_collection().document()
-    attendance_log = {
+    log_reference = _access_collection().document()
+    access_log = {
         "id": log_reference.id,
-        "employee_code": employee_code,
-        "full_name": employee["full_name"],
+        "resident_code": resident_code,
+        "full_name": resident["full_name"],
         "recognized_at": timestamp,
         "confidence": confidence,
         "source": source,
         "event_type": event_type,
     }
-    log_reference.set(attendance_log)
+    log_reference.set(access_log)
 
     next_state = "inside" if event_type == "entry" else "outside"
-    _employees_collection().document(employee_code).update(
+    _residents_collection().document(resident_code).update(
         {
             "presence_state": next_state,
             "last_event_type": event_type,
             "last_recognized_at": timestamp,
         }
     )
-    employee.update(
+    resident.update(
         {
             "presence_state": next_state,
             "last_event_type": event_type,
             "last_recognized_at": timestamp,
         }
     )
-    return attendance_log
+    return access_log
 
 
-def list_attendance_logs(limit: int = 100) -> list[dict[str, Any]]:
-    query = _attendance_collection().order_by(
+def list_access_logs(limit: int = 100) -> list[dict[str, Any]]:
+    query = _access_collection().order_by(
         "recognized_at",
         direction=firestore.Query.DESCENDING,
     ).limit(limit)

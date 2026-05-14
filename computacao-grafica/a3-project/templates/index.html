@@ -164,7 +164,7 @@
             {% for log in logs %}
               <tr>
                 <td>{{ log.full_name }}</td>
-                <td>{{ log.employee_code }}</td>
+                <td>{{ log.resident_code }}</td>
                 <td>{{ 'Entrada' if log.event_type == 'entry' else 'Saida' }}</td>
                 <td>{{ log.recognized_at | datetime_br }}</td>
                 <td>{{ '%.3f'|format(log.confidence) }}</td>

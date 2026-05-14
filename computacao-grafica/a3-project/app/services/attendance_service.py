@@ -7,10 +7,12 @@ import cv2
 
 from ..config import settings
 from ..database import (
+    create_access_log,
     create_resident,
-    resident_exists,
+    deserialize_embedding,
     init_database,
-    # list_resident_embeddings,  # Supondo que será implementado
+    list_residents,
+    resident_exists,
 )
 from .esp_client import ESP8266Client
 from .face_engine import FaceEngine, RecognitionResult
@@ -60,5 +62,30 @@ class AccessService:
         event_type: str,
         source: str = "web",
     ) -> dict[str, Any]:
-        # Implementação futura: lógica de reconhecimento e registro de acesso
-        raise NotImplementedError("Função de reconhecimento ainda não implementada.")
+        residents = list_residents()
+        if not residents:
+            return {"status": "unknown", "message": "Nenhum morador/visitante cadastrado no sistema."}
+
+        for resident in residents:
+            resident["face_embedding"] = deserialize_embedding(resident["face_embedding"])
+
+        result = self.face_engine.recognize_from_images(images, residents)
+
+        if result.status != "recognized" or result.employee is None:
+            return {"status": "unknown", "message": "Rosto não reconhecido. Acesso negado."}
+
+        matched_resident = result.employee
+        log = create_access_log(
+            resident=matched_resident,
+            confidence=result.confidence,
+            event_type=event_type,
+            source=source,
+        )
+
+        self.esp_client.send_signal(event_type, {"resident_code": matched_resident["resident_code"]})
+
+        return {
+            "status": "success",
+            "message": f"{matched_resident['full_name']} — {event_type} registrado com sucesso.",
+            "log": log,
+        }
