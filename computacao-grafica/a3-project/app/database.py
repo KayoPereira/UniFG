@@ -177,6 +177,34 @@ def create_attendance_log(
     return attendance_log
 
 
+def _admin_users_collection():
+    return _get_firestore_client().collection("admin_users")
+
+
+def get_admin_user_by_email(email: str) -> dict[str, Any] | None:
+    results = _admin_users_collection().where("email", "==", email).limit(1).stream()
+    for doc in results:
+        return doc.to_dict()
+    return None
+
+
+def create_admin_user(email: str, password_hash: str) -> dict[str, Any]:
+    user: dict[str, Any] = {
+        "email": email,
+        "password_hash": password_hash,
+        "created_at": utc_now_iso(),
+    }
+    ref = _admin_users_collection().document()
+    user["id"] = ref.id
+    ref.set(user)
+    return user
+
+
+def list_admin_users() -> list[dict[str, Any]]:
+    docs = _admin_users_collection().order_by("created_at").stream()
+    return [doc.to_dict() for doc in docs]
+
+
 def list_attendance_logs(limit: int = 100) -> list[dict[str, Any]]:
     query = _attendance_collection().order_by(
         "recognized_at",

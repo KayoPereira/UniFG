@@ -23,6 +23,13 @@ def build_parser() -> argparse.ArgumentParser:
     serve_parser.add_argument("--port", type=int, default=8000)
     serve_parser.add_argument("--debug", action="store_true")
 
+    admin_parser = subparsers.add_parser(
+        "create-admin",
+        help="Cria o primeiro usuario administrador no Firestore.",
+    )
+    admin_parser.add_argument("--email", required=True, help="Email do administrador.")
+    admin_parser.add_argument("--password", required=True, help="Senha (minimo 8 caracteres).")
+
     return parser
 
 
@@ -38,6 +45,16 @@ def main() -> None:
     if args.command == "serve":
         app = create_app()
         app.run(host=args.host, port=args.port, debug=args.debug)
+        return
+
+    if args.command == "create-admin":
+        from .services.auth_service import AuthService
+        init_database()
+        try:
+            user = AuthService().register(args.email, args.password)
+            print(f"Administrador criado com sucesso: {user['email']}")
+        except ValueError as exc:
+            print(f"Erro: {exc}")
         return
 
 

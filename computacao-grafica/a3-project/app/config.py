@@ -28,6 +28,7 @@ class Settings:
     known_streak_frames: int
     web_enrollment_samples: int
     web_scan_samples: int
+    secret_key: str
 
 
 def load_settings() -> Settings:
@@ -66,6 +67,7 @@ def load_settings() -> Settings:
         known_streak_frames=int(os.getenv("KNOWN_STREAK_FRAMES", "5")),
         web_enrollment_samples=int(os.getenv("WEB_ENROLLMENT_SAMPLES", "5")),
         web_scan_samples=int(os.getenv("WEB_SCAN_SAMPLES", "3")),
+        secret_key=os.getenv("SECRET_KEY", "dev-insecure-troque-em-producao"),
     )
 
 

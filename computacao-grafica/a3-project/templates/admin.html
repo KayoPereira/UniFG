@@ -1,0 +1,197 @@
+{% extends 'base.html' %}
+
+{% block title %}Administração — Ponto Facial{% endblock %}
+
+{% block content %}
+  <section class="capture-grid" aria-label="Cadastro facial">
+    <article class="panel capture-panel" data-capture-form data-min-captures="{{ settings.web_enrollment_samples }}">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Administração</p>
+          <h2>Cadastrar novo usuário</h2>
+          <p>Preencha os dados e capture {{ settings.web_enrollment_samples }} fotos para registrar a face.</p>
+        </div>
+      </div>
+
+      <form action="/api/employees" method="post" novalidate>
+        <div class="form-grid">
+          <label>
+            <span>Código</span>
+            <input name="employee_code" type="text" required maxlength="40" autocomplete="off">
+          </label>
+          <label>
+            <span>Nome completo</span>
+            <input name="full_name" type="text" required maxlength="120" autocomplete="name">
+          </label>
+          <label class="form-grid-full">
+            <span>Departamento</span>
+            <input name="department" type="text" maxlength="120" autocomplete="organization-title">
+          </label>
+        </div>
+
+        <div class="camera-stage">
+          <video data-video playsinline autoplay muted></video>
+          <div class="camera-copy">
+            <p>Permita o acesso à câmera, alinhe o rosto e capture as amostras. Use iluminação frontal para melhorar a similaridade.</p>
+          </div>
+        </div>
+
+        <div class="capture-actions">
+          <button type="button" class="button-secondary" data-start-camera>Abrir câmera</button>
+          <button type="button" class="button-secondary" data-capture>Capturar amostra</button>
+          <button type="button" class="button-secondary" data-clear-captures>Limpar</button>
+          <button type="submit" class="button-primary">Cadastrar usuário</button>
+        </div>
+
+        <div class="preview-strip" data-gallery aria-live="polite"></div>
+        <p class="status-message" data-status aria-live="polite"></p>
+      </form>
+    </article>
+
+    <aside class="panel admin-side">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Base de dados</p>
+          <h2>Usuários cadastrados</h2>
+          <p>Estado atual de cada usuário no Firebase.</p>
+        </div>
+      </div>
+      {% if employees %}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Código</th>
+                <th scope="col">Nome</th>
+                <th scope="col">Departamento</th>
+                <th scope="col">Estado</th>
+                <th scope="col">Cadastro</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for employee in employees %}
+                <tr>
+                  <td>{{ employee.employee_code }}</td>
+                  <td>{{ employee.full_name }}</td>
+                  <td>{{ employee.department or 'Não informado' }}</td>
+                  <td>
+                    {% if employee.presence_state == 'inside' %}
+                      <span class="badge badge-success">Dentro</span>
+                    {% else %}
+                      <span class="badge">Fora</span>
+                    {% endif %}
+                  </td>
+                  <td>{{ employee.created_at | datetime_br }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="empty-state">Nenhum usuário cadastrado ainda.</p>
+      {% endif %}
+    </aside>
+  </section>
+
+  <section class="panel" aria-labelledby="logs-title">
+    <div class="panel-header">
+      <div>
+        <p class="eyebrow">Auditoria</p>
+        <h2 id="logs-title">Logs de acesso</h2>
+        <p>Histórico completo de entradas e saídas processadas pelo sistema.</p>
+      </div>
+      <span class="badge">{{ logs | length }} registros</span>
+    </div>
+    {% if logs %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Usuário</th>
+              <th scope="col">Código</th>
+              <th scope="col">Evento</th>
+              <th scope="col">Data e hora</th>
+              <th scope="col">Confiança</th>
+              <th scope="col">Origem</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for log in logs %}
+              <tr>
+                <td>{{ log.full_name }}</td>
+                <td>{{ log.employee_code }}</td>
+                <td>
+                  {% if log.event_type == 'entry' %}
+                    <span class="badge badge-success">Entrada</span>
+                  {% else %}
+                    <span class="badge badge-exit">Saída</span>
+                  {% endif %}
+                </td>
+                <td>{{ log.recognized_at | datetime_br }}</td>
+                <td>{{ '%.3f'|format(log.confidence) }}</td>
+                <td>{{ log.source }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="empty-state">Nenhum registro de acesso ainda.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel" id="usuarios" aria-labelledby="users-title">
+    <div class="panel-header">
+      <div>
+        <p class="eyebrow">Controle de acesso</p>
+        <h2 id="users-title">Usuários administradores</h2>
+        <p>Contas com acesso à área administrativa do sistema.</p>
+      </div>
+    </div>
+
+    <div class="admin-users-layout">
+      <form action="/admin/usuarios" method="post" class="user-form" novalidate>
+        <h3 class="user-form-title">Novo administrador</h3>
+        <div class="form-grid">
+          <label class="form-grid-full">
+            <span>Email</span>
+            <input name="email" type="email" required autocomplete="off">
+          </label>
+          <label class="form-grid-full">
+            <span>Senha</span>
+            <input name="password" type="password" required minlength="8" autocomplete="new-password">
+          </label>
+        </div>
+        {% if user_error %}
+          <p class="status-message is-error">{{ user_error }}</p>
+        {% endif %}
+        <button type="submit" class="button-primary">Criar conta</button>
+      </form>
+
+      <div class="user-list">
+        {% if admin_users %}
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Email</th>
+                  <th scope="col">Criado em</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for u in admin_users %}
+                  <tr>
+                    <td>{{ u.email }}</td>
+                    <td>{{ u.created_at | datetime_br }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="empty-state">Nenhum administrador cadastrado.</p>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+{% endblock %}

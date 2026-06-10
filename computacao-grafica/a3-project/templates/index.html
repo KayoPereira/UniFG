@@ -1,15 +1,15 @@
 {% extends 'base.html' %}
 
-{% block title %}Painel de Ponto Facial{% endblock %}
+{% block title %}Painel — Ponto Facial{% endblock %}
 
 {% block content %}
   <section class="stats-grid" aria-label="Indicadores do sistema">
     <article class="stat-card">
-      <h2>Funcionarios cadastrados</h2>
+      <h2>Usuários cadastrados</h2>
       <p>{{ metrics.employees_count }}</p>
     </article>
     <article class="stat-card">
-      <h2>Batidas registradas</h2>
+      <h2>Registros de ponto</h2>
       <p>{{ metrics.attendance_count }}</p>
     </article>
     <article class="stat-card">
@@ -18,164 +18,21 @@
     </article>
   </section>
 
-  <section class="capture-grid" aria-label="Operacoes faciais">
-    <article class="panel capture-panel" data-capture-form data-min-captures="{{ settings.web_enrollment_samples }}">
-      <div class="panel-header">
-        <div>
-          <h2>Cadastrar nova face</h2>
-          <p>Preencha os dados do funcionario e capture {{ settings.web_enrollment_samples }} fotos pelo navegador.</p>
-        </div>
-      </div>
-
-      <form action="/api/employees" method="post" novalidate>
-        <div class="form-grid">
-          <label>
-            <span>Codigo</span>
-            <input name="employee_code" type="text" required maxlength="40" autocomplete="off">
-          </label>
-          <label>
-            <span>Nome completo</span>
-            <input name="full_name" type="text" required maxlength="120" autocomplete="name">
-          </label>
-          <label class="form-grid-full">
-            <span>Departamento</span>
-            <input name="department" type="text" maxlength="120" autocomplete="organization-title">
-          </label>
-        </div>
-
-        <div class="camera-stage">
-          <video data-video playsinline autoplay muted></video>
-          <div class="camera-copy">
-            <p>Permita o acesso a camera, alinhe o rosto e capture as amostras. Use iluminacao frontal para melhorar a similaridade.</p>
-          </div>
-        </div>
-
-        <div class="capture-actions">
-          <button type="button" class="button-secondary" data-start-camera>Abrir camera</button>
-          <button type="button" class="button-secondary" data-capture>Capturar amostra</button>
-          <button type="button" class="button-secondary" data-clear-captures>Limpar</button>
-          <button type="submit" class="button-primary">Cadastrar funcionario</button>
-        </div>
-
-        <div class="preview-strip" data-gallery aria-live="polite"></div>
-        <p class="status-message" data-status aria-live="polite"></p>
-      </form>
-    </article>
-
-    <article class="panel capture-panel" data-capture-form data-min-captures="{{ settings.web_scan_samples }}">
-      <div class="panel-header">
-        <div>
-          <h2>Registrar entrada ou saida</h2>
-          <p>Capture {{ settings.web_scan_samples }} fotos para validar a identidade e o estado atual do funcionario.</p>
-        </div>
-      </div>
-
-      <form action="/api/attendance/scan" method="post" novalidate>
-        <div class="form-grid">
-          <label class="form-grid-full">
-            <span>Tipo de registro</span>
-            <select name="mode" required>
-              <option value="entry">Entrada</option>
-              <option value="exit">Saida</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="camera-stage">
-          <video data-video playsinline autoplay muted></video>
-          <div class="camera-copy">
-            <p>Se a pessoa ja estiver com entrada em aberto, uma nova entrada sera bloqueada ate que a saida seja registrada.</p>
-          </div>
-        </div>
-
-        <div class="capture-actions">
-          <button type="button" class="button-secondary" data-start-camera>Abrir camera</button>
-          <button type="button" class="button-secondary" data-capture>Capturar rosto</button>
-          <button type="button" class="button-secondary" data-clear-captures>Limpar</button>
-          <button type="submit" class="button-primary">Registrar ponto</button>
-        </div>
-
-        <div class="preview-strip" data-gallery aria-live="polite"></div>
-        <p class="status-message" data-status aria-live="polite"></p>
-      </form>
-    </article>
-  </section>
-
-  <section class="panel" aria-labelledby="employees-title">
-    <div class="panel-header">
-      <h2 id="employees-title">Funcionarios</h2>
-      <p>Base facial centralizada no Firebase com o estado atual de cada funcionario.</p>
-    </div>
-    {% if employees %}
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Codigo</th>
-              <th scope="col">Nome</th>
-              <th scope="col">Departamento</th>
-              <th scope="col">Estado</th>
-              <th scope="col">Cadastro</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for employee in employees %}
-              <tr>
-                <td>{{ employee.employee_code }}</td>
-                <td>{{ employee.full_name }}</td>
-                <td>{{ employee.department or 'Nao informado' }}</td>
-                <td>
-                  {% if employee.presence_state == 'inside' %}
-                    <span class="badge badge-success">Dentro</span>
-                  {% else %}
-                    <span class="badge">Fora</span>
-                  {% endif %}
-                </td>
-                <td>{{ employee.created_at | datetime_br }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    {% else %}
-      <p class="empty-state">Nenhum funcionario cadastrado ainda.</p>
-    {% endif %}
-  </section>
-
-  <section class="panel" aria-labelledby="logs-title">
-    <div class="panel-header">
-      <h2 id="logs-title">Registros de horario</h2>
-      <p>Historico das ultimas entradas e saidas processadas pelo navegador.</p>
-    </div>
-    {% if logs %}
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Funcionario</th>
-              <th scope="col">Codigo</th>
-              <th scope="col">Evento</th>
-              <th scope="col">Data e hora</th>
-              <th scope="col">Confianca</th>
-              <th scope="col">Origem</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for log in logs %}
-              <tr>
-                <td>{{ log.full_name }}</td>
-                <td>{{ log.employee_code }}</td>
-                <td>{{ 'Entrada' if log.event_type == 'entry' else 'Saida' }}</td>
-                <td>{{ log.recognized_at | datetime_br }}</td>
-                <td>{{ '%.3f'|format(log.confidence) }}</td>
-                <td>{{ log.source }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    {% else %}
-      <p class="empty-state">Nenhuma batida de ponto registrada ainda.</p>
-    {% endif %}
-  </section>
+  <nav class="hub-grid" aria-label="Módulos do sistema">
+    <a href="/entrada" class="hub-card hub-entry">
+      <p class="hub-card-label">Terminal</p>
+      <h3>Entrada</h3>
+      <p>Registre a entrada de um usuário por reconhecimento facial.</p>
+    </a>
+    <a href="/saida" class="hub-card hub-exit">
+      <p class="hub-card-label">Terminal</p>
+      <h3>Saída</h3>
+      <p>Registre a saída de um usuário por reconhecimento facial.</p>
+    </a>
+    <a href="/admin" class="hub-card hub-admin">
+      <p class="hub-card-label">Administração</p>
+      <h3>Admin</h3>
+      <p>Cadastre novos usuários e consulte todos os logs de auditoria.</p>
+    </a>
+  </nav>
 {% endblock %}

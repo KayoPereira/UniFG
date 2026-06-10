@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -100,6 +101,20 @@ class FaceEngine:
         if frame is None:
             raise ValueError("Nao foi possivel decodificar a imagem enviada pelo navegador.")
         return frame
+
+    def estimate_head_tilt(self, image_bytes: bytes) -> float | None:
+        """Returns tilt angle in degrees using eye landmarks from YuNet.
+        ~0 = straight, positive = tilted left, negative = tilted right (person's perspective).
+        Returns None if no face is detected.
+        """
+        frame = self.decode_image_bytes(image_bytes)
+        face = self._detect_primary_face(frame)
+        if face is None:
+            return None
+        # face[4:6] = camera-right eye (person's left), face[6:8] = camera-left eye (person's right)
+        dx = float(face[4]) - float(face[6])
+        dy = float(face[5]) - float(face[7])
+        return math.degrees(math.atan2(dy, dx))
 
     def extract_embedding_from_image_bytes(self, image_bytes: bytes) -> tuple[np.ndarray, np.ndarray]:
         frame = self.decode_image_bytes(image_bytes)

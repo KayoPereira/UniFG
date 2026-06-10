@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}Entrar — Ponto Facial{% endblock %}
+
+{% block content %}
+  <div class="login-wrap">
+    <article class="panel login-card">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Área restrita</p>
+          <h2>Acesso administrativo</h2>
+          <p>Informe seu email e senha para continuar.</p>
+        </div>
+      </div>
+
+      <form action="/auth/login" method="post" novalidate>
+        <div class="form-grid">
+          <label class="form-grid-full">
+            <span>Email</span>
+            <input
+              name="email"
+              type="email"
+              required
+              autocomplete="email"
+              autofocus
+            >
+          </label>
+          <label class="form-grid-full">
+            <span>Senha</span>
+            <input
+              name="password"
+              type="password"
+              required
+              autocomplete="current-password"
+            >
+          </label>
+        </div>
+
+        {% if error %}
+          <p class="status-message is-error">{{ error }}</p>
+        {% endif %}
+
+        <div class="login-actions">
+          <button type="submit" class="button-primary">Entrar</button>
+        </div>
+      </form>
+    </article>
+  </div>
+{% endblock %}

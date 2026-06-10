@@ -3,19 +3,27 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}Painel de Ponto Facial{% endblock %}</title>
-    <meta
-      name="description"
-      content="Painel web para cadastro facial, registro de entrada e saida e monitoramento de funcionarios com integracao Firebase e ESP8266."
-    >
+    <title>{% block title %}Ponto Facial{% endblock %}</title>
+    <meta name="description" content="Sistema de ponto com reconhecimento facial integrado ao Firebase e ESP8266.">
     <meta name="robots" content="index,follow">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="{{ url_for('static', filename='app.js') }}" defer></script>
   </head>
   <body>
     <header class="site-header">
-      <div class="shell">
-        <h1>Painel de ponto facial</h1>
+      <div class="shell header-inner">
+        <h1><a href="/" class="brand-link">Ponto Facial</a></h1>
+        <nav class="site-nav" aria-label="Navegação principal">
+          <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">Início</a>
+          <a href="/entrada" class="nav-link {% if request.path == '/entrada' %}active{% endif %}">Entrada</a>
+          <a href="/saida" class="nav-link {% if request.path == '/saida' %}active{% endif %}">Saída</a>
+          <a href="/admin" class="nav-link {% if request.path == '/admin' %}active{% endif %}">Admin</a>
+          {% if session.get('admin_email') %}
+            <span class="nav-divider" aria-hidden="true"></span>
+            <span class="nav-user">{{ session.admin_email }}</span>
+            <a href="/auth/logout" class="nav-link nav-logout">Sair</a>
+          {% endif %}
+        </nav>
       </div>
     </header>
     <main class="shell">

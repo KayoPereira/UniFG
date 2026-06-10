@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block title %}Entrada — Ponto Facial{% endblock %}
+
+{% block content %}
+  <article class="panel scan-full" data-auto-scan data-scan-mode="entry">
+    <div class="panel-header">
+      <div>
+        <p class="eyebrow">Terminal de</p>
+        <h2>Entrada</h2>
+        <p>Posicione o rosto na câmera. O reconhecimento é automático.</p>
+      </div>
+    </div>
+
+    <div class="camera-stage">
+      <video data-video playsinline autoplay muted></video>
+      <span class="scan-indicator" data-scan-indicator></span>
+      <canvas data-dots-canvas></canvas>
+
+      <div class="scan-overlay" data-scan-overlay hidden>
+        <p class="scan-overlay-title" data-overlay-title></p>
+        <p class="scan-overlay-name" data-overlay-name></p>
+        <p class="scan-overlay-msg" data-overlay-msg></p>
+      </div>
+    </div>
+
+    <div class="challenge-info" data-challenge-info hidden>
+      <p class="challenge-who" data-challenge-name></p>
+      <p class="challenge-instruction">Incline a cabeça para qualquer lado para confirmar</p>
+      <div class="challenge-progress-track">
+        <div class="challenge-progress-bar" data-challenge-progress></div>
+      </div>
+    </div>
+
+    <p class="status-message status-scan" data-status aria-live="polite">Iniciando câmera...</p>
+  </article>
+{% endblock %}
