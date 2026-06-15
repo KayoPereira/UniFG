@@ -19,6 +19,7 @@ class Settings:
     database_path: Path
     firebase_project_id: str | None
     firebase_credentials_path: Path | None
+    firebase_rtdb_url: str | None
     yunet_model_path: Path
     sface_model_path: Path
     esp8266_url: str | None
@@ -43,6 +44,10 @@ def load_settings() -> Settings:
         faces_dir=FACES_DIR,
         database_path=Path(os.getenv("DATABASE_PATH", DATA_DIR / "attendance.db")),
         firebase_project_id=os.getenv("FIREBASE_PROJECT_ID"),
+        firebase_rtdb_url=os.getenv(
+            "FIREBASE_RTDB_URL",
+            "https://a3-project-bd5d6-default-rtdb.firebaseio.com",
+        ),
         firebase_credentials_path=(
             Path(firebase_credentials_path).expanduser()
             if firebase_credentials_path

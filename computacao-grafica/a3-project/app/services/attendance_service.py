@@ -12,6 +12,7 @@ from ..database import (
     employee_exists,
     init_database,
     list_employee_embeddings,
+    set_access_enabled,
 )
 from .esp_client import ESP8266Client
 from .face_engine import FaceEngine, RecognitionResult
@@ -160,6 +161,7 @@ class AttendanceService:
                 "confidence": f"{confidence:.3f}",
             },
         )
+        set_access_enabled(True)
         event_label = "entrada" if event_type == "entry" else "saida"
         return {
             "status": "success",

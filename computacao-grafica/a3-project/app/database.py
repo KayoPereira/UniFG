@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from typing import Any
 
 import firebase_admin
 import numpy as np
-from firebase_admin import credentials, firestore
+from firebase_admin import credentials, db, firestore
+
+LOGGER = logging.getLogger(__name__)
 
 from .config import settings
 
@@ -21,6 +24,8 @@ def _get_firebase_app() -> firebase_admin.App:
         options: dict[str, str] = {}
         if settings.firebase_project_id:
             options["projectId"] = settings.firebase_project_id
+        if settings.firebase_rtdb_url:
+            options["databaseURL"] = settings.firebase_rtdb_url
 
         if settings.firebase_credentials_path is not None:
             if not settings.firebase_credentials_path.exists():
@@ -175,6 +180,13 @@ def create_attendance_log(
         }
     )
     return attendance_log
+
+
+def set_access_enabled(value: bool) -> None:
+    try:
+        db.reference("motor/enable", app=_get_firebase_app()).set(value)
+    except Exception as exc:
+        LOGGER.warning("Falha ao atualizar flag 'enable' no Realtime Database: %s", exc)
 
 
 def _admin_users_collection():
