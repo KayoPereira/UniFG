@@ -1,14 +1,14 @@
-# Sistema de ponto com reconhecimento facial
+# Sistema de controle de acesso com reconhecimento facial
 
-Projeto em Python para cadastro e reconhecimento de rostos pelo navegador, registro de entrada e saida em Cloud Firestore, mini-site em Flask e integração com ESP8266 usando MicroPython.
+Projeto em Python para cadastro e reconhecimento de rostos pelo navegador, registro de entrada e saida em Cloud Firestore, mini-site em Flask e integração com ESP8266.
 
 ## O que o sistema faz
 
-- cadastra novos funcionários pelo site Flask usando a camera do navegador
-- reconhece funcionários já cadastrados a partir do site Flask
+- cadastra novos moradores pelo site Flask usando a camera do navegador
+- reconhece moradores já cadastrados a partir do site Flask
 - grava cada registro com regra de entrada e saida
-- expõe funcionários e registros em um mini-site local
-- envia sinais para um ESP8266 quando o rosto é reconhecido, não reconhecido ou quando o sistema está em modo de cadastro
+- expõe moradores e registros em um mini-site local
+- envia sinais para um ESP8266 via Firebase quando o rosto é reconhecido
 
 ## Arquitetura
 
@@ -16,18 +16,13 @@ Projeto em Python para cadastro e reconhecimento de rostos pelo navegador, regis
 - Reconhecimento facial: OpenCV com YuNet e SFace
 - Banco de dados: Cloud Firestore
 - Mini-site: Flask
-- ESP8266: MicroPython com servidor HTTP simples
+- ESP8266: C++ com integração ao Firebase
 
-## Limitação importante sobre o ESP8266
+## ESP
 
-O ESP8266 não executa Python tradicional de desktop. Para manter tudo em Python, este projeto usa MicroPython no ESP8266.
-
-Fluxo esperado:
-
-1. gravar o firmware do MicroPython no ESP8266 pela USB
-2. enviar os arquivos [esp8266/boot.py](esp8266/boot.py) e [esp8266/main.py](esp8266/main.py) para a placa
-3. deixar o ESP conectado ao Wi-Fi da mesma rede do computador
-4. configurar a URL do ESP na aplicação principal
+Para compilar o código do ESP, basta ter configurado o compilador da board no seu PC usando o Arduino IDE
+- board: ESP32 Dev Module
+- porta: COM3
 
 ## Instalação
 
@@ -48,8 +43,6 @@ source .venv/bin/activate
 export FIREBASE_PROJECT_ID="a3-project-bd5d6"
 export FIREBASE_CREDENTIALS_PATH=".secrets/firebase-service-account.json"
 
-# opcional: URL do ESP8266 na rede local
-export ESP8266_URL="http://IP_DO_ESP"
 
 python3 -m app.cli serve --host 0.0.0.0 --port 8000
 ```
@@ -63,7 +56,6 @@ A camera agora e acessada pelo proprio navegador. Isso elimina a dependencia de 
 ## Configuração por variáveis de ambiente
 
 ```bash
-export ESP8266_URL="http://192.168.0.50"
 export CAMERA_INDEX="0"
 export FACE_MATCH_THRESHOLD="0.363"
 export FIREBASE_PROJECT_ID="SEU-PROJETO"
@@ -73,7 +65,6 @@ export FIREBASE_CREDENTIALS_PATH="/caminho/para/service-account.json"
 Variáveis disponíveis:
 
 - `DATA_DIR`: diretório base para dados e fotos
-- `ESP8266_URL`: URL base do ESP8266
 - `FACE_MATCH_THRESHOLD`: limiar mínimo da similaridade do SFace
 - `FIREBASE_PROJECT_ID`: identificador do projeto Firebase/Firestore
 - `FIREBASE_CREDENTIALS_PATH`: caminho para o JSON da conta de serviço do Firebase
@@ -122,20 +113,7 @@ O script [scripts/download_models.py](scripts/download_models.py) baixa ambos au
 
 ## Sinais enviados ao ESP8266
 
-- `recognized`: funcionário reconhecido
-- `unknown`: rosto não cadastrado
-- `registering`: modo de cadastro ativo
-- `denied`: tentativa de entrada ou saida invalida para o estado atual
+O ESP fica lendo a flag do Firebase a cada 500ms, na primeira identificação de true, ele entra no
+ciclo de abertura/fechamento da cancela.
 
-## Deploy do ESP8266 com MicroPython
-
-Exemplo com `mpremote` após conectar a placa por USB:
-
-```bash
-pip install mpremote
-mpremote connect auto fs cp esp8266/boot.py :boot.py
-mpremote connect auto fs cp esp8266/main.py :main.py
-mpremote connect auto reset
-```
-
-Se a placa ainda não estiver com MicroPython, primeiro grave o firmware adequado do ESP8266. Isso depende do modelo exato da sua placa.
+Ao final do ciclo, o ESP faz uma request para o Firebase, retornando a flag para false.
