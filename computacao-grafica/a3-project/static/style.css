@@ -712,3 +712,46 @@ tbody tr:last-child td {
     grid-template-columns: 1fr;
   }
 }
+
+/* --- Filtros de log */
+.filtro-container {
+  margin-bottom: 24px;
+  background: rgba(255, 211, 163, 0.1);
+}
+
+.filtro-title {
+  color: var(--accent);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.85rem;
+  margin-top: 0;
+  margin-bottom: 14px;
+}
+
+.filtro-flex {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.filtro-campo {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 200px;
+}
+
+.filtro-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.filtro-btn-reset {
+  height: 45px;
+  padding: 0 24px;
+  font-weight: 600;
+}
