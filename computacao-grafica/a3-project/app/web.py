@@ -110,16 +110,54 @@ def create_app() -> Flask:
 
     # --- Admin (protegido) ---
 
+    _LOGS_PER_PAGE = 20
+
+    def _filter_logs(logs: list, texto: str, data: str) -> list:
+        if not texto and not data:
+            return logs
+        result = []
+        for log in logs:
+            if texto:
+                t = texto.lower()
+                if t not in (log.get("full_name") or "").lower() and t not in (log.get("employee_code") or "").lower():
+                    continue
+            if data:
+                try:
+                    formatted = format_iso_datetime(log.get("recognized_at", ""))
+                    if data not in formatted:
+                        continue
+                except (ValueError, TypeError):
+                    continue
+            result.append(log)
+        return result
+
+    def _get_paginated_logs(page: int, texto: str = "", data: str = "") -> tuple[list, int, int, int]:
+        all_logs = list_attendance_logs()
+        filtered = _filter_logs(all_logs, texto, data)
+        total = len(filtered)
+        total_pages = max(1, (total + _LOGS_PER_PAGE - 1) // _LOGS_PER_PAGE)
+        page = min(max(1, page), total_pages)
+        offset = (page - 1) * _LOGS_PER_PAGE
+        return filtered[offset : offset + _LOGS_PER_PAGE], total, total_pages, page
+
     @app.get("/admin")
     @login_required
     def admin() -> str:
+        page = request.args.get("page", 1, type=int)
+        filtro_texto = request.args.get("filtro_texto", "").strip()
+        filtro_data = request.args.get("filtro_data", "").strip()
         employees = list_employees()
-        logs = list_attendance_logs()
+        logs, total_logs, total_pages, page = _get_paginated_logs(page, filtro_texto, filtro_data)
         admin_users = list_admin_users()
         return render_template(
             "admin.html",
             employees=employees,
             logs=logs,
+            total_logs=total_logs,
+            page=page,
+            total_pages=total_pages,
+            filtro_texto=filtro_texto,
+            filtro_data=filtro_data,
             admin_users=admin_users,
             settings=settings,
         )
@@ -134,12 +172,17 @@ def create_app() -> Flask:
             return redirect(url_for("admin") + "#usuarios")
         except ValueError as exc:
             employees = list_employees()
-            logs = list_attendance_logs()
+            logs, total_logs, total_pages, page = _get_paginated_logs(1)
             admin_users = list_admin_users()
             return render_template(
                 "admin.html",
                 employees=employees,
                 logs=logs,
+                total_logs=total_logs,
+                page=page,
+                total_pages=total_pages,
+                filtro_texto="",
+                filtro_data="",
                 admin_users=admin_users,
                 settings=settings,
                 user_error=str(exc),

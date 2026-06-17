@@ -440,46 +440,27 @@ for (const root of document.querySelectorAll("[data-auto-scan]")) {
   window.addEventListener("beforeunload", () => stopStream(video));
 }
 
-// ── Módulo de Filtro do log
+// ── Filtro de logs (server-side com debounce) ────────────────────────────────
 
-function executarFiltroMutuo() {
-  const inputTexto = document.getElementById("filtroTextoFront");
-  const inputData = document.getElementById("filtroDataFront");
-  
-  if (!inputTexto || !inputData) return;
-
-  const textoVal = inputTexto.value.toLowerCase().trim();
-  const dataVal = inputData.value.trim();
-  
-  const logsHeader = document.getElementById("logs-title");
-  if (!logsHeader) return;
-  
-  const painelLogs = logsHeader.closest(".panel");
-  const linhasLogs = painelLogs.querySelectorAll("table tbody tr");
-
-  linhasLogs.forEach(linha => {
-    const txtUsuario = linha.children[0].textContent.toLowerCase();
-    const txtCodigo = linha.children[1].textContent.toLowerCase();
-    const atendeTexto = txtUsuario.includes(textoVal) || txtCodigo.includes(textoVal);
-
-    const txtDataHora = linha.children[3].textContent.trim();
-    const atendeData = (dataVal === "") || txtDataHora.includes(dataVal);
-
-    if (atendeTexto && atendeData) {
-      linha.style.display = ""; 
-    } else {
-      linha.style.display = "none"; 
-    }
-  });
+function _debounce(fn, delay) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
 }
 
+(function () {
+  const form = document.getElementById("filtroForm");
+  if (!form) return;
+  const inputs = form.querySelectorAll("input[type=text]");
+  const submitDebounced = _debounce(() => form.submit(), 450);
+  inputs.forEach(input => input.addEventListener("input", submitDebounced));
+})();
+
 function limparFiltrosFrontEnd() {
-  const inputTexto = document.getElementById("filtroTextoFront");
-  const inputData = document.getElementById("filtroDataFront");
-  
-  if (inputTexto && inputData) {
-    inputTexto.value = "";
-    inputData.value = "";
-    executarFiltroMutuo();
-  }
+  const form = document.getElementById("filtroForm");
+  if (!form) return;
+  form.querySelectorAll("input[type=text]").forEach(i => { i.value = ""; });
+  form.submit();
 }

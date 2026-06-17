@@ -217,11 +217,13 @@ def list_admin_users() -> list[dict[str, Any]]:
     return [doc.to_dict() for doc in docs]
 
 
-def list_attendance_logs(limit: int = 100) -> list[dict[str, Any]]:
+def list_attendance_logs(limit: int = 0) -> list[dict[str, Any]]:
     query = _attendance_collection().order_by(
         "recognized_at",
         direction=firestore.Query.DESCENDING,
-    ).limit(limit)
+    )
+    if limit > 0:
+        query = query.limit(limit)
     return [snapshot.to_dict() for snapshot in query.stream()]
 
 
