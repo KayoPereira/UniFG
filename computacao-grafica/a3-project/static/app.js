@@ -83,7 +83,7 @@ for (const root of document.querySelectorAll("[data-capture-form]")) {
     try {
       captures = [...captures, captureFrame(video)];
       renderGallery(gallery, captures);
-      setStatus(status, `Capturas coletadas: ${captures.length}/${minCaptures}.`);
+      setStatus(status, Capturas coletadas: ${captures.length}/${minCaptures}.);
     } catch {
       setStatus(status, "Abra a câmera e aguarde a imagem aparecer antes de capturar.", "is-error");
     }
@@ -98,7 +98,7 @@ for (const root of document.querySelectorAll("[data-capture-form]")) {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (captures.length < minCaptures) {
-      setStatus(status, `Colete pelo menos ${minCaptures} capturas antes de enviar.`, "is-error");
+      setStatus(status, "Colete pelo menos" ${minCaptures}, "capturas antes de enviar", "is-error");
       return;
     }
     const payload = Object.fromEntries(new FormData(form).entries());
@@ -229,7 +229,7 @@ for (const root of document.querySelectorAll("[data-auto-scan]")) {
 
           // Halo difuso
           const grd = dotsCtx.createRadialGradient(x, y, 0, x, y, dotR * 3.5);
-          grd.addColorStop(0, `rgba(255,255,255,${(0.45 * pulse).toFixed(2)})`);
+          grd.addColorStop(0, rgba(255,255,255,${(0.45 * pulse).toFixed(2)}));
           grd.addColorStop(1, "rgba(255,255,255,0)");
           dotsCtx.beginPath();
           dotsCtx.arc(x, y, dotR * 3.5, 0, Math.PI * 2);
@@ -239,7 +239,7 @@ for (const root of document.querySelectorAll("[data-auto-scan]")) {
           // Bolinha sólida
           dotsCtx.beginPath();
           dotsCtx.arc(x, y, dotR, 0, Math.PI * 2);
-          dotsCtx.fillStyle = `rgba(255,255,255,${alpha.toFixed(2)})`;
+          dotsCtx.fillStyle = rgba(255,255,255,${alpha.toFixed(2)});
           dotsCtx.fill();
         } else {
           dotsCtx.beginPath();
@@ -271,7 +271,7 @@ for (const root of document.querySelectorAll("[data-auto-scan]")) {
   function animateProgress() {
     if (state !== "challenge") return;
     const pct = Math.min(100, ((Date.now() - challengeStart) / CHALLENGE_TIMEOUT_MS) * 100);
-    progressBar.style.width = `${100 - pct}%`;
+    progressBar.style.width = ${100 - pct}%;
     rafProgressId = requestAnimationFrame(animateProgress);
   }
 
@@ -463,4 +463,66 @@ function limparFiltrosFrontEnd() {
   if (!form) return;
   form.querySelectorAll("input[type=text]").forEach(i => { i.value = ""; });
   form.submit();
+}
+
+window.exportarLogsParaExcel = function() {
+  let tabelaLogs = null;
+  const tabelas = document.querySelectorAll("table");
+  
+  tabelas.forEach(t => {
+    const colunasCabecalho = t.querySelectorAll("thead th");
+    if (colunasCabecalho.length === 6) {
+      tabelaLogs = t;
+    }
+  });
+  
+  if (!tabelaLogs) {
+    alert("Erro: Não foi possível localizar a tabela de logs de acesso na página.");
+    return;
+  }
+
+  const linhasTabela = tabelaLogs.querySelectorAll("tbody tr");
+  
+  if (linhasTabela.length === 0) {
+    alert("Aviso: Nenhuma linha de registro foi encontrada na tabela para exportar.");
+    return;
+  }
+
+  let linhasCsv = [];
+
+  const cabecalhos = tabelaLogs.querySelectorAll("thead th");
+  if (cabecalhos.length > 0) {
+    let dadosCabecalho = [];
+    cabecalhos.forEach(th => dadosCabecalho.push("${th.innerText.trim()}"));
+    linhasCsv.push(dadosCabecalho.join(";"));
+  }
+
+  for (let i = 0; i < linhasTabela.length; i++) {
+    const colunas = linhasTabela[i].querySelectorAll("td");
+    let dadosLinha = [];
+
+    for (let j = 0; j < colunas.length; j++) {
+      let textoLimpo = colunas[j].innerText.replace(/(\r\n|\n|\r)/gm, "").trim();
+      textoLimpo = textoLimpo.replace(/"/g, '""');
+      dadosLinha.push("${textoLimpo}");
+    }
+    
+    if (dadosLinha.length > 0) {
+      linhasCsv.push(dadosLinha.join(";"));
+    }
+  }
+
+  const conteudoFinal = "\ufeff" + linhasCsv.join("\n");
+  const blob = new Blob([conteudoFinal], { type: "text/csv;charset=utf-8;" });
+  const linkDownload = document.createElement("a");
+  
+  const dataFormatada = new Date().toISOString().slice(0, 10);
+  linkDownload.download = relatorio_acessos_entryface_${dataFormatada}.csv;
+  
+  linkDownload.href = window.URL.createObjectURL(blob);
+  linkDownload.style.display = "none";
+  
+  document.body.appendChild(linkDownload);
+  linkDownload.click();
+  document.body.removeChild(linkDownload);
 }
