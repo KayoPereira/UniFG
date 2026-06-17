@@ -120,6 +120,283 @@
         </div>
       </div>
     </form>
+    <div style="margin-bottom: 14px; display: flex; justify-content: flex-end;">
+    <button type="button" onclick="exportarLogsParaExcel()" class="btn-export-excel">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        Exportar para Excel (.csv)
+    </button>
+    </div>
+
+    <div class="table-wrap">
+        <table class="table-logs">
+            </table>
+    </div>
+    {% if logs %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Usuário</th>
+              <th scope="col">Código</th>
+              <th scope="col">Evento</th>
+              <th scope="col">Data e hora</th>
+              <th scope="col">Confiança</th>
+              <th scope="col">Origem</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for log in logs %}
+              <tr>
+                <td>{{ log.full_name }}</td>
+                <td>{{ log.employee_code }}</td>
+                <td>
+                  {% if log.event_type == 'entry' %}
+                    <span class="badge badge-success">Entrada</span>
+                  {% else %}
+                    <span class="badge badge-exit">Saída</span>
+                  {% endif %}
+                </td>
+                <td>{{ log.recognized_at | datetime_br }}</td>
+                <td>{{ '%.3f'|format(log.confidence) }}</td>
+                <td>{{ log.source }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% if total_pages > 1 %}
+        {% set ft = filtro_texto if filtro_texto else none %}
+        {% set fd = filtro_data if filtro_data else none %}
+        {% set start_p = [1, page - 2] | max %}
+        {% set end_p = [total_pages, page + 2] | min %}
+        <nav class="pagination" aria-label="Navegação de páginas de logs">
+          <a
+            href="{{ url_for('admin', page=page - 1, filtro_texto=ft, filtro_data=fd) }}"
+            class="pagination-btn{% if page <= 1 %} pagination-btn--disabled{% endif %}"
+            aria-label="Página anterior"
+            {% if page <= 1 %}tabindex="-1" aria-disabled="true"{% endif %}
+          >&#8592;</a>
+
+          {% if start_p > 1 %}
+            <a href="{{ url_for('admin', page=1, filtro_texto=ft, filtro_data=fd) }}" class="pagination-btn">1</a>
+            {% if start_p > 2 %}<span class="pagination-ellipsis">&hellip;</span>{% endif %}
+          {% endif %}
+
+          {% for p in range(start_p, end_p + 1) %}
+            <a
+              href="{{ url_for('admin', page=p, filtro_texto=ft, filtro_data=fd) }}"
+              class="pagination-btn{% if p == page %} pagination-btn--active{% endif %}"
+              {% if p == page %}aria-current="page"{% endif %}
+            >{{ p }}</a>
+          {% endfor %}
+
+          {% if end_p < total_pages %}
+            {% if end_p < total_pages - 1 %}<span class="pagination-ellipsis">&hellip;</span>{% endif %}
+            <a href="{{ url_for('admin', page=total_pages, filtro_texto=ft, filtro_data=fd) }}" class="pagination-btn">{{ total_pages }}</a>
+          {% endif %}
+
+          <a
+            href="{{ url_for('admin', page=page + 1, filtro_texto=ft, filtro_data=fd) }}"
+            class="pagination-btn{% if page >= total_pages %} pagination-btn--disabled{% endif %}"
+            aria-label="Próxima página"
+            {% if page >= total_pages %}tabindex="-1" aria-disabled="true"{% endif %}
+          >&#8594;</a>
+        </nav>
+        <p class="pagination-info">Página {{ page }} de {{ total_pages }} &mdash; {{ total_logs }} registros encontrados</p>
+      {% endif %}
+    {% else %}
+      <p class="empty-state">Nenhum registro de acesso ainda.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel" id="usuarios" aria-labelledby="users-title">
+    <div class="panel-header">
+      <div>
+        <p class="eyebrow">Controle de acesso</p>
+        <h2 id="users-title">Usuários administradores</h2>
+        <p>Contas com acesso à área administrativa do sistema.</p>
+      </div>
+    </div>
+
+    <div class="admin-users-layout">
+      <form action="/admin/usuarios" method="post" class="user-form" novalidate>
+        <h3 class="user-form-title">Novo administrador</h3>
+        <div class="form-grid">
+          <label class="form-grid-full">
+            <span>Email</span>
+            <input name="email" type="email" required autocomplete="off">
+          </label>
+          <label class="form-grid-full">
+            <span>Senha</span>
+            <input name="password" type="password" required minlength="8" autocomplete="new-password">
+          </label>
+        </div>
+        {% if user_error %}
+          <p class="status-message is-error">{{ user_error }}</p>
+        {% endif %}
+        <button type="submit" class="button-primary">Criar conta</button>
+      </form>
+
+      <div class="user-list">
+        {% if admin_users %}
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Email</th>
+                  <th scope="col">Criado em</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for u in admin_users %}
+                  <tr>
+                    <td>{{ u.email }}</td>
+                    <td>{{ u.created_at | datetime_br }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="empty-state">Nenhum administrador cadastrado.</p>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+{% endblock %}{% extends 'base.html' %}
+
+{% block title %}Administração — EntryFace{% endblock %}
+
+{% block content %}
+  <section class="capture-grid" aria-label="Cadastro facial">
+    <article class="panel capture-panel" data-capture-form data-min-captures="{{ settings.web_enrollment_samples }}">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Administração</p>
+          <h2>Cadastrar novo usuário</h2>
+          <p>Preencha os dados e capture {{ settings.web_enrollment_samples }} fotos para registrar a face.</p>
+        </div>
+      </div>
+
+      <form action="/api/employees" method="post" novalidate>
+        <div class="form-grid">
+          <label>
+            <span>Código</span>
+            <input name="employee_code" type="text" required maxlength="40" autocomplete="off">
+          </label>
+          <label>
+            <span>Nome completo</span>
+            <input name="full_name" type="text" required maxlength="120" autocomplete="name">
+          </label>
+          <label class="form-grid-full">
+            <span>Departamento</span>
+            <input name="department" type="text" maxlength="120" autocomplete="organization-title">
+          </label>
+        </div>
+
+        <div class="camera-stage">
+          <video data-video playsinline autoplay muted></video>
+          <div class="camera-copy">
+            <p>Permita o acesso à câmera, alinhe o rosto e capture as amostras. Use iluminação frontal para melhorar a similaridade.</p>
+          </div>
+        </div>
+
+        <div class="capture-actions">
+          <button type="button" class="button-secondary" data-start-camera>Abrir câmera</button>
+          <button type="button" class="button-secondary" data-capture>Capturar amostra</button>
+          <button type="button" class="button-secondary" data-clear-captures>Limpar</button>
+          <button type="submit" class="button-primary">Cadastrar usuário</button>
+        </div>
+
+        <div class="preview-strip" data-gallery aria-live="polite"></div>
+        <p class="status-message" data-status aria-live="polite"></p>
+      </form>
+    </article>
+
+    <aside class="panel admin-side">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Base de dados</p>
+          <h2>Usuários cadastrados</h2>
+          <p>Estado atual de cada usuário no Firebase.</p>
+        </div>
+      </div>
+      {% if employees %}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Código</th>
+                <th scope="col">Nome</th>
+                <th scope="col">Departamento</th>
+                <th scope="col">Estado</th>
+                <th scope="col">Cadastro</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for employee in employees %}
+                <tr>
+                  <td>{{ employee.employee_code }}</td>
+                  <td>{{ employee.full_name }}</td>
+                  <td>{{ employee.department or 'Não informado' }}</td>
+                  <td>
+                    {% if employee.presence_state == 'inside' %}
+                      <span class="badge badge-success">Dentro</span>
+                    {% else %}
+                      <span class="badge">Fora</span>
+                    {% endif %}
+                  </td>
+                  <td>{{ employee.created_at | datetime_br }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="empty-state">Nenhum usuário cadastrado ainda.</p>
+      {% endif %}
+    </aside>
+  </section>
+
+  <section class="panel" aria-labelledby="logs-title">
+    <div class="panel-header">
+      <div>
+        <p class="eyebrow">Auditoria</p>
+        <h2 id="logs-title">Logs de acesso</h2>
+        <p>Histórico completo de entradas e saídas processadas pelo sistema.</p>
+      </div>
+      <span class="badge">{{ total_logs }} registros</span>
+    </div>
+    <form id="filtroForm" method="get" action="{{ url_for('admin') }}" class="user-form filtro-container">
+      <h3 class="filtro-title">Filtro de acessos</h3>
+      <div class="filtro-flex">
+        <div class="filtro-campo">
+          <span class="filtro-label">Nome ou Código</span>
+          <input type="text" id="filtroTextoFront" name="filtro_texto" value="{{ filtro_texto }}" placeholder="Digite o nome ou código" autocomplete="off">
+        </div>
+        <div class="filtro-campo">
+          <span class="filtro-label">Data do Acesso (DD/MM/AAAA)</span>
+          <input type="text" id="filtroDataFront" name="filtro_data" value="{{ filtro_data }}" placeholder="Ex: 16/06/2026" autocomplete="off">
+        </div>
+        <div>
+          <button type="button" onclick="limparFiltrosFrontEnd()" class="button-secondary filtro-btn-reset">
+            Limpar
+          </button>
+        </div>
+      </div>
+    </form>
+    <div style="margin-bottom: 14px; display: flex; justify-content: flex-end;">
+    <button type="button" onclick="exportarLogsParaExcel()" class="btn-export-excel">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        Exportar para Excel (.csv)
+    </button>
+    </div>
+
+    <div class="table-wrap">
+        <table class="table-logs">
+            </table>
+    </div>
     {% if logs %}
       <div class="table-wrap">
         <table>
