@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Saída — Ponto Facial{% endblock %}
+{% block title %}Saída — EntryFace{% endblock %}
 
 {% block content %}
   <article class="panel scan-full" data-auto-scan data-scan-mode="exit">
@@ -16,6 +16,9 @@
       <video data-video playsinline autoplay muted></video>
       <span class="scan-indicator" data-scan-indicator></span>
       <canvas data-dots-canvas></canvas>
+      {% if session.get('admin_email') %}
+        <a href="/" class="btn-back-float">← Voltar</a>
+      {% endif %}
 
       <div class="scan-overlay" data-scan-overlay hidden>
         <p class="scan-overlay-title" data-overlay-title></p>
@@ -32,6 +35,8 @@
       </div>
     </div>
 
-    <p class="status-message status-scan" data-status aria-live="polite">Iniciando câmera...</p>
+    <div class="scan-footer">
+      <p class="status-message status-scan" data-status aria-live="polite">Iniciando câmera...</p>
+    </div>
   </article>
 {% endblock %}
