@@ -3,16 +3,18 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}Ponto Facial{% endblock %}</title>
-    <meta name="description" content="Sistema de ponto com reconhecimento facial integrado ao Firebase e ESP8266.">
+    <title>{% block title %}EntryFace{% endblock %}</title>
+    <meta name="description" content="Sistema de controle de acesso com reconhecimento facial — EntryFace.">
     <meta name="robots" content="index,follow">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="{{ url_for('static', filename='app.js') }}" defer></script>
   </head>
   <body>
     <header class="site-header">
       <div class="shell header-inner">
-        <h1><a href="/" class="brand-link">Ponto Facial</a></h1>
+        <h1><a href="/" class="brand-link">EntryFace</a></h1>
         <nav class="site-nav" aria-label="Navegação principal">
           <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">Início</a>
           <a href="/entrada" class="nav-link {% if request.path == '/entrada' %}active{% endif %}">Entrada</a>
