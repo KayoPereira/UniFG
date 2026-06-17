@@ -102,6 +102,27 @@
       </div>
       <span class="badge">{{ logs | length }} registros</span>
     </div>
+    <div class="user-form filtro-container">
+    <h3 class="filtro-title">🔍 Filtro de acessos</h3>
+    
+    <div class="filtro-flex">
+      <div class="filtro-campo">
+        <span class="filtro-label">Nome ou Código</span>
+        <input type="text" id="filtroTextoFront" onkeyup="executarFiltroMutuo()" placeholder="Digite o nome ou código">
+      </div>
+
+      <div class="filtro-campo">
+        <span class="filtro-label">Data do Acesso (DD/MM/AAAA)</span>
+        <input type="text" id="filtroDataFront" onkeyup="executarFiltroMutuo()" placeholder="Ex: 16/06/2026">
+      </div>
+
+      <div>
+        <button type="button" onclick="limparFiltrosFrontEnd()" class="button-secondary filtro-btn-reset">
+          Limpar
+        </button>
+      </div>
+    </div>
+  </div>
     {% if logs %}
       <div class="table-wrap">
         <table>
